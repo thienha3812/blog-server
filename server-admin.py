@@ -24,7 +24,9 @@ CORS(app)
 
 db = pymysql.connect(host='localhost', user="root", db='blog', password="")
 
-
+def connect_mysql():
+    db = pymysql.connect(host='localhost', user="root", db='blog', password="")
+    return db
 @app.route('/post/getall')
 def hello():
     if request.method == "GET":
@@ -38,12 +40,12 @@ def hello():
 @app.route('/post/insert',methods = ['POST'])
 def insert():
     if request.method == 'POST':
-        try:       
-            print(request.get_json())     
+        try:                   
             with db.cursor() as cursor:
                 cursor.execute("INSERT INTO posts(post_content,author_ID,post_title,post_image_ID,post_category_ID) VALUES(%s,%s,%s,%s,%s)",(request.get_json()["content"],request.get_json()["author_ID"],request.get_json()["title"],request.get_json()["img_ID"],request.get_json()["category_ID"]))
                 db.commit()
-        except Exception as e:            
+        except Exception as e:   
+            print(e)         
             return e
         finally:
             return "123"
