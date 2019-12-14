@@ -28,8 +28,7 @@ def mostread():
                             INNER JOIN category on category.category_ID = posts.post_category_ID
                             ORDER BY post_view desc limit 4 
                             """,(base_url))
-        db.commit()
-        print(hashids.encode(123))
+        db.commit()        
         result = cursor.fetchall()
         return json.dumps([{"create_at": str(r[0]), "title":r[1], "img_src": r[2], "post_ID":hashids.encode(r[3]), "category":r[4]} for r in result])
     except:
@@ -49,8 +48,7 @@ def newspost():
                                 INNER JOIN  category ON category.category_ID = posts.post_category_ID 
                                 WHERE posts.post_status = 'published' ORDER BY posts.post_ID DESC LIMIT 9
         """,(base_url))
-        db.commit()                        
-        print(hashids.encode(1))
+        db.commit()                                
         result = cursor.fetchall()        
         return json.dumps([{"post_ID" : hashids.encode(r[0]),"create_at":str(r[1]),"post_title" : r[2],"img_src" : r[3],"category" : r[4]} for r in result])
     finally:
@@ -71,8 +69,7 @@ def get():
             ORDER BY post_view DESC LIMIT 3
         """,(base_url))
         db.commit()
-        result = cursor.fetchall()
-        print(result)
+        result = cursor.fetchall()        
         return json.dumps([{"post_ID" : hashids.encode(r[0]),"create_at" : str(r[1]), "post_title" : r[2],"img_src" : r[3],"category":r[4]} for r in result])
     finally:
         cursor.close()
@@ -97,7 +94,7 @@ def post():
         """,(base_url,hashID))
         db.commit()
         result = cursor.fetchall()                
-        print(result)
+    
         return json.dumps([{"post_ID" : Hashids(min_length=12).encode(r[0]),"create_at" : str(r[1]), "post_title" : r[2],"img_src" : r[3],"category":r[4],"post_content" : r[5]} for r in result])
     finally:
         cursor.close()
@@ -105,8 +102,7 @@ def post():
 def getAllPost():    
     try:
         # request data
-        startAt = request.get_json()['start']  
-        print(startAt)          
+        startAt = request.get_json()['start']                   
         # database
         db = connect_mysql()
         # cursor
@@ -129,6 +125,28 @@ def getAllPost():
         return json.dumps([{"post_ID" : hashids.encode(r[0]),"create_at" : str(r[1]), "post_title" : r[2],"img_src" : r[3],"category":r[4]} for r in result])
     finally:
         cursor.close()
+@app.route('/post/codingpost',methods= ['POST'])
+def getCodingPost():
+    try:
+        db = connect_mysql()
+        cursor = db.cursor()
+        startAt = request.get_json()['start']
+        hashids = Hashids(min_length=12)     
+        base_url = os.getenv("BASE_URL")
+        cursor.execute("""
+            SELECT posts.post_ID,posts.create_at,posts.post_title,CONCAT(%s,image.src) as image_src,category.category,posts.post_content FROM posts
+            INNER JOIN image ON image.img_ID = posts.post_image_ID
+            INNER JOIN  category ON category.category_ID = posts.post_category_ID 
+            WHERE posts.post_status='published' AND category.category = 'LẬP TRÌNH'
+            ORDER BY posts.post_ID DESC
+            LIMIT 10
+            OFFSET %s            
+        """,(base_url,startAt))
+        db.commit()
+        result = cursor.fetchall()
+        return json.dumps([{"post_ID" : hashids.encode(r[0]),"create_at" : str(r[1]), "post_title" : r[2],"img_src" : r[3],"category":r[4]} for r in result])
+    finally:
+        cursor.close()        
 
 
 if __name__ == '__main__':
