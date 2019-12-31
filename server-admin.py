@@ -22,11 +22,11 @@ UPLOAD_FOLDER = 'static/upload'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 CORS(app)
 
-db = pymysql.connect(host='localhost', user="root", db='blog', password="")
-
+# kết nối mysql
 def connect_mysql():
     db = pymysql.connect(host='localhost', user="root", db='blog', password="")
     return db
+
 @app.route('/post/getall')
 def hello():
     if request.method == "GET":
@@ -41,24 +41,27 @@ def hello():
 def insert():
     if request.method == 'POST':
         try:                   
-            with db.cursor() as cursor:
-                cursor.execute("INSERT INTO posts(post_content,author_ID,post_title,post_image_ID,post_category_ID) VALUES(%s,%s,%s,%s,%s)",(request.get_json()["content"],request.get_json()["author_ID"],request.get_json()["title"],request.get_json()["img_ID"],request.get_json()["category_ID"]))
-                db.commit()
-        except Exception as e:   
-            print(e)         
+            db = connect_mysql()
+            cursor = db.cursor()
+            cursor.execute("INSERT INTO posts(post_content,author_ID,post_title,post_image_ID,post_category_ID) VALUES(%s,%s,%s,%s,%s)",(request.get_json()["content"],request.get_json()["author_ID"],request.get_json()["title"],request.get_json()["img_ID"],request.get_json()["category_ID"]))
+            db.commit()
+        except Exception as e:                     
+            print(e)
             return e
         finally:
-            return "123"
+            return json.dumps({"status" : 200 , "content" : "Thêm bài viết thành công"})
 
 @app.route('/category/getall', methods = ['GET'])
 def getall():
     try:
-       with db.cursor() as cursor:
-           cursor.execute("SELECT * FROM blog.category;")
-           db.commit()
-           result = cursor.fetchall()           
-    finally:
+        db = connect_mysql()
+        cursor = db.cursor()
+        cursor.execute("SELECT * FROM blog.category;")
+        db.commit()
+        result = cursor.fetchall()           
         return json.dumps([{"category_ID" : r[0], "category" : r[1]} for r in result])
+    finally:
+        cursor.close()
 @app.route('/file/upload', methods=['POST', 'GET'])
 def upload():
     if request.method == 'POST':
@@ -69,12 +72,17 @@ def upload():
                 path = os.path.join(app.config['UPLOAD_FOLDER'], str(uuid.uuid4()) + extension)                
                 file.save(path)
                 size = os.stat('./'+path).st_size
-                with db.cursor() as cursor:
-                    cursor.execute("insert into blog.image(size, src, type) value( %s, %s, %s)",(size,path,extension))                               
-                    db.commit()                    
-                    result = cursor.lastrowid
+                db = connect_mysql()
+                cursor = db.cursor()
+                cursor.execute("insert into blog.image(size, src, type) value( %s, %s, %s)",(size,path,extension))                               
+                db.commit()                    
+                result = cursor.lastrowid
+                return {"img_ID" : result}        
+
+        except Exception as e:
+            return e
         finally:
-            return {"img_ID" : result}        
+            cursor.close()
 
 
 if __name__ == '__main__':

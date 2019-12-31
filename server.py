@@ -49,7 +49,8 @@ def newspost():
                                 WHERE posts.post_status = 'published' ORDER BY posts.post_ID DESC LIMIT 9
         """,(base_url))
         db.commit()                                
-        result = cursor.fetchall()        
+        result = cursor.fetchall()    
+        print(result)    
         return json.dumps([{"post_ID" : hashids.encode(r[0]),"create_at":str(r[1]),"post_title" : r[2],"img_src" : r[3],"category" : r[4]} for r in result])
     finally:
         cursor.close()
@@ -148,6 +149,61 @@ def getCodingPost():
     finally:
         cursor.close()        
 
+@app.route('/post/getlenpagination' , methods = ['POST'])
+def getLenPagination():
+    try:
+        db = connect_mysql()
+        cursor = db.cursor()
+        category = request.get_json()['category']
+        if category == 'CÔNG NGHỆ':
+            cursor.execute("""
+            SELECT  COUNT(posts.post_ID)
+            FROM posts
+            INNER JOIN image ON image.img_ID = posts.post_image_ID
+            INNER JOIN  category ON category.category_ID = posts.post_category_ID 
+            WHERE posts.post_status='published' AND category.category = 'CÔNG NGHỆ'
+            ORDER BY posts.post_ID DESC                        
+            """)
+            db.commit()
+            result = cursor.fetchall()                
+        if category == 'LINH TINH':
+            cursor.execute("""
+            SELECT  COUNT(posts.post_ID)
+            FROM posts
+            INNER JOIN image ON image.img_ID = posts.post_image_ID
+            INNER JOIN  category ON category.category_ID = posts.post_category_ID 
+            WHERE posts.post_status='published' AND category.category = 'LINH TINH'
+            ORDER BY posts.post_ID DESC                        
+            """)
+            db.commit()
+            result = cursor.fetchall()                
+        if category == 'LẬP TRÌNH':
+            cursor.execute("""
+            SELECT  COUNT(posts.post_ID)
+            FROM posts
+            INNER JOIN image ON image.img_ID = posts.post_image_ID
+            INNER JOIN  category ON category.category_ID = posts.post_category_ID 
+            WHERE posts.post_status='published' AND category.category = 'LẬP TRÌNH'
+            ORDER BY posts.post_ID DESC                        
+            """)
+            db.commit()
+            result = cursor.fetchall()                
+        if category == 'TỔNG HỢP':
+            cursor.execute("""
+            SELECT  COUNT(posts.post_ID)
+            FROM posts
+            INNER JOIN image ON image.img_ID = posts.post_image_ID
+            INNER JOIN  category ON category.category_ID = posts.post_category_ID 
+            WHERE posts.post_status='published'
+            ORDER BY posts.post_ID DESC                        
+            """)
+            db.commit()
+            result = cursor.fetchall()        
+        return {"length" : result[0][0]}
+    except Exception as e:
+        print(e)
+    finally:
+        cursor.close()
 
 if __name__ == '__main__':
     app.run(debug=True)
