@@ -23,14 +23,14 @@ def mostread():
         db = connect_mysql()
         cursor = db.cursor()
         base_url = os.getenv("BASE_URL")
-        cursor.execute("""SELECT posts.create_at,posts.post_title,CONCAT(%s,image.src) as image_src,posts.post_ID,category.category FROM posts 
+        cursor.execute("""SELECT posts.create_at,posts.post_title,CONCAT(%s,image.src) as image_src,posts.post_ID,category.category,posts.post_content FROM posts 
                             INNER JOIN image on image.img_ID = posts.post_image_ID 
                             INNER JOIN category on category.category_ID = posts.post_category_ID
                             ORDER BY post_view desc limit 4 
                             """,(base_url))
         db.commit()        
         result = cursor.fetchall()
-        return json.dumps([{"create_at": str(r[0]), "title":r[1], "img_src": r[2], "post_ID":hashids.encode(r[3]), "category":r[4]} for r in result])
+        return json.dumps([{"create_at": str(r[0]), "title":r[1], "img_src": r[2], "post_ID":hashids.encode(r[3]), "category":r[4], "post_content" : r[5]} for r in result])
     except:
         return "Lỗi rùi nè"
     finally:
@@ -43,15 +43,14 @@ def newspost():
         db = connect_mysql()
         cursor  = db.cursor()
         base_url = os.getenv("BASE_URL")
-        cursor.execute("""SELECT posts.post_ID,posts.create_at,posts.post_title,CONCAT(%s,image.src) as image_src,category.category FROM posts
+        cursor.execute("""SELECT posts.post_ID,posts.create_at,posts.post_title,CONCAT(%s,image.src) as image_src,category.category, posts.post_content FROM posts
                                 INNER JOIN image ON image.img_ID = posts.post_image_ID
                                 INNER JOIN  category ON category.category_ID = posts.post_category_ID 
                                 WHERE posts.post_status = 'published' ORDER BY posts.post_ID DESC LIMIT 9
         """,(base_url))
         db.commit()                                
-        result = cursor.fetchall()    
-        print(result)    
-        return json.dumps([{"post_ID" : hashids.encode(r[0]),"create_at":str(r[1]),"post_title" : r[2],"img_src" : r[3],"category" : r[4]} for r in result])
+        result = cursor.fetchall()               
+        return json.dumps([{"post_ID" : hashids.encode(r[0]),"create_at":str(r[1]),"post_title" : r[2],"img_src" : r[3],"category" : r[4], "post_content" : r[5]} for r in result])
     finally:
         cursor.close()
 
@@ -77,9 +76,10 @@ def get():
 @app.route('/post/loadpostbyid', methods = ['POST'])
 def post():
     try:
-        db = connect_mysql()
+        db = connect_mysql()        
         idRequest = request.get_json()['id']
         hashID = Hashids(min_length=12).decode(idRequest)[0]
+        print(hashID)
         base_url = os.getenv("BASE_URL")
         cursor = db.cursor()
         cursor.execute("""
@@ -148,7 +148,28 @@ def getCodingPost():
         return json.dumps([{"post_ID" : hashids.encode(r[0]),"create_at" : str(r[1]), "post_title" : r[2],"img_src" : r[3],"category":r[4]} for r in result])
     finally:
         cursor.close()        
-
+@app.route('/post/anypost' , methods = ['POST'])
+def getAnyPost():
+    try:
+        db = connect_mysql()
+        cursor = db.cursor()
+        startAt = request.get_json()['start']
+        hashids = Hashids(min_length=12)     
+        base_url = os.getenv("BASE_URL")
+        cursor.execute("""
+            SELECT posts.post_ID,posts.create_at,posts.post_title,CONCAT(%s,image.src) as image_src,category.category,posts.post_content FROM posts
+            INNER JOIN image ON image.img_ID = posts.post_image_ID
+            INNER JOIN  category ON category.category_ID = posts.post_category_ID 
+            WHERE posts.post_status='published' AND category.category = 'BÊN LỀ'
+            ORDER BY posts.post_ID DESC
+            LIMIT 10
+            OFFSET %s            
+        """,(base_url,startAt))
+        db.commit()
+        result = cursor.fetchall()
+        return json.dumps([{"post_ID" : hashids.encode(r[0]),"create_at" : str(r[1]), "post_title" : r[2],"img_src" : r[3],"category":r[4]} for r in result])
+    finally:
+        cursor.close()   
 @app.route('/post/getlenpagination' , methods = ['POST'])
 def getLenPagination():
     try:
@@ -166,13 +187,13 @@ def getLenPagination():
             """)
             db.commit()
             result = cursor.fetchall()                
-        if category == 'LINH TINH':
+        if category == 'BÊN LỀ':
             cursor.execute("""
             SELECT  COUNT(posts.post_ID)
             FROM posts
             INNER JOIN image ON image.img_ID = posts.post_image_ID
             INNER JOIN  category ON category.category_ID = posts.post_category_ID 
-            WHERE posts.post_status='published' AND category.category = 'LINH TINH'
+            WHERE posts.post_status='published' AND category.category = 'BÊN LỀ'
             ORDER BY posts.post_ID DESC                        
             """)
             db.commit()
@@ -201,9 +222,56 @@ def getLenPagination():
             result = cursor.fetchall()        
         return {"length" : result[0][0]}
     except Exception as e:
-        print(e)
+        pass
     finally:
         cursor.close()
+@app.route("/post/random" , methods =['GET'])
+def getRandom():
+    try: 
+        db = connect_mysql()
+        # cursor
+        cursor = db.cursor()
+        # hash
+        hashids = Hashids(min_length=12)     
+        # base_url
+        base_url = os.getenv("BASE_URL")
+        cursor.execute("""
+            SELECT posts.post_ID,posts.create_at,posts.post_title,CONCAT(%s,image.src) as image_src,category.category,posts.post_content FROM posts
+            INNER JOIN image ON image.img_ID = posts.post_image_ID
+            INNER JOIN  category ON category.category_ID = posts.post_category_ID 
+            WHERE posts.post_status='published'
+            ORDER BY RAND()
+            LIMIT 2            
+        """,(base_url))
+        db.commit()
+        result = cursor.fetchall()        
+        return json.dumps([{"post_ID" : hashids.encode(r[0]),"create_at" : str(r[1]), "post_title" : r[2],"img_src" : r[3],"category":r[4]} for r in result])
+    except Exception as e:
+        pass
+    finally:
+        cursor.close()
+@app.route("/post/techpost",methods=['POST'])
+def getTechPost():
+    try:
+        db = connect_mysql()
+        cursor = db.cursor()
+        startAt = request.get_json()['start']
+        hashids = Hashids(min_length=12)     
+        base_url = os.getenv("BASE_URL")
+        cursor.execute("""
+            SELECT posts.post_ID,posts.create_at,posts.post_title,CONCAT(%s,image.src) as image_src,category.category,posts.post_content FROM posts
+            INNER JOIN image ON image.img_ID = posts.post_image_ID
+            INNER JOIN  category ON category.category_ID = posts.post_category_ID 
+            WHERE posts.post_status='published' AND category.category = 'CÔNG NGHỆ'
+            ORDER BY posts.post_ID DESC
+            LIMIT 10
+            OFFSET %s            
+        """,(base_url,startAt))
+        db.commit()
+        result = cursor.fetchall()
+        return json.dumps([{"post_ID" : hashids.encode(r[0]),"create_at" : str(r[1]), "post_title" : r[2],"img_src" : r[3],"category":r[4]} for r in result])
+    finally:
+        cursor.close() 
 
 if __name__ == '__main__':
     app.run(debug=True)
